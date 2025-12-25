@@ -14,12 +14,12 @@ Instead of focusing only on model scores, this project emphasizes **how real ML 
 
 ### 🔑 What this project focuses on
 
-* #CorrectProblemFraming
-* #ExploratoryDataAnalysis (EDA with reasoning)
-* #FeatureEngineering and feature reasoning
-* #MetricSelection aligned with business goals
-* #EvidenceBasedModelSelection
-* #DebuggingTooGoodResults
+* #### Correct Problem Framing
+* #### Exploratory Data Analysis (EDA with reasoning)
+* #### Feature Engineering and feature reasoning
+* #### Metric Selection aligned with business goals
+* #### Evidence Based Model Selection
+* #### Debugging So-Called Too Good Results
 
 ---
 
