@@ -191,7 +191,7 @@ This step restored **trustworthy, generalizable results**.
 
 | Model                    | ROC-AUC   |
 | ------------------------ | --------- |
-| Logistic Regression (L1) | **0.844** |
+| Logistic Regression (L1) | **0.845** |
 | Random Forest            | 0.843     |
 | XGBoost                  | 0.839     |
 | Decision Tree            | 0.834     |
