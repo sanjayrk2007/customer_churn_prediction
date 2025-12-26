@@ -4,101 +4,125 @@ import pandas as pd
 import numpy as np
 import os
 
-# 1. Setup Page Configuration
-st.set_page_config(page_title="Telco Churn Predictor", layout="centered")
-st.title("📊 Customer Churn Prediction App")
-st.markdown("Enter customer details below to predict their likelihood of leaving (churning).")
+# 1. Branding & Styling
+st.set_page_config(page_title="ChurnShield AI", page_icon="🛡️", layout="wide")
 
-# 2. Robust Asset Loading
+# Custom CSS for "Top-to-Bottom" visual appeal and color accents
+st.markdown("""
+    <style>
+    .main {
+        background-color: #f5f7f9;
+    }
+    .stButton>button {
+        width: 100%;
+        border-radius: 5px;
+        height: 3em;
+        background-color: #007bff;
+        color: white;
+    }
+    .prediction-box {
+        padding: 20px;
+        border-radius: 10px;
+        text-align: center;
+        margin-top: 20px;
+    }
+    </style>
+    """, unsafe_allow_stdio=True)
+
+# 2. Asset Loading
 base_path = os.path.dirname(__file__)
 
 @st.cache_resource
 def load_assets():
     try:
-        model_path = os.path.join(base_path, 'churn_model.pkl')
-        scaler_path = os.path.join(base_path, 'scaler.pkl')
-        
-        model = joblib.load(model_path)
-        scaler = joblib.load(scaler_path)
+        model = joblib.load(os.path.join(base_path, 'churn_model.pkl'))
+        scaler = joblib.load(os.path.join(base_path, 'scaler.pkl'))
         return model, scaler
-    except FileNotFoundError:
-        st.error("Error: Model or Scaler files not found. Please ensure 'churn_model.pkl' and 'scaler.pkl' are in your GitHub repository.")
+    except:
         return None, None
 
 model, scaler = load_assets()
 
+# 3. Header Section
+st.title("🛡️ ChurnShield: Telco Retention AI")
+st.info("This AI analyzes customer behavior to predict potential churn risk and suggest retention strategies.")
+
 if model and scaler:
-    # 3. User Inputs
-    st.sidebar.header("Customer Details")
-    
-    # Numeric Inputs
-    tenure = st.sidebar.slider("Tenure (Months)", 0, 72, 12)
-    monthly_charges = st.sidebar.number_input("Monthly Charges ($)", value=70.0)
-    avg_charges = st.sidebar.number_input("Average Lifetime Charges ($)", value=60.0)
-    senior_citizen = st.sidebar.selectbox("Senior Citizen?", ["No", "Yes"])
-
-    # Categorical Inputs
-    contract = st.sidebar.selectbox("Contract Type", ["Month-to-month", "One year", "Two year"])
-    internet = st.sidebar.selectbox("Internet Service", ["DSL", "Fiber optic", "No"])
-    paperless = st.sidebar.selectbox("Paperless Billing?", ["No", "Yes"])
-    payment = st.sidebar.selectbox("Payment Method", ["Electronic check", "Mailed check", "Bank transfer (automatic)", "Credit card (automatic)"])
-    streaming_tv = st.sidebar.selectbox("Streaming TV?", ["No", "Yes", "No internet service"])
-    streaming_movies = st.sidebar.selectbox("Streaming Movies?", ["No", "Yes", "No internet service"])
-    multi_lines = st.sidebar.selectbox("Multiple Lines?", ["No", "Yes", "No phone service"])
-
-    # 4. Data Preparation (Fixing the ValueError)
-    # Start with a dictionary of the basic raw inputs
-    raw_data = {
-        'SeniorCitizen': 1 if senior_citizen == "Yes" else 0,
-        'tenure': tenure,
-        'MonthlyCharges': monthly_charges,
-        'AvgCharges': avg_charges,
-        # Map categorical variables to their one-hot encoded counterparts
-        'InternetService_Fiber optic': 1 if internet == "Fiber optic" else 0,
-        'InternetService_No': 1 if internet == "No" else 0,
-        'Contract_One year': 1 if contract == "One year" else 0,
-        'Contract_Two year': 1 if contract == "Two year" else 0,
-        'PaperlessBilling_Yes': 1 if paperless == "Yes" else 0,
-        'PaymentMethod_Credit card (automatic)': 1 if payment == "Credit card (automatic)" else 0,
-        'PaymentMethod_Electronic check': 1 if payment == "Electronic check" else 0,
-        'PaymentMethod_Mailed check': 1 if payment == "Mailed check" else 0,
-        'StreamingTV_No internet service': 1 if streaming_tv == "No internet service" else 0,
-        'StreamingTV_Yes': 1 if streaming_tv == "Yes" else 0,
-        'StreamingMovies_No internet service': 1 if streaming_movies == "No internet service" else 0,
-        'StreamingMovies_Yes': 1 if streaming_movies == "Yes" else 0,
-        'MultipleLines_No phone service': 1 if multi_lines == "No phone service" else 0,
-        'MultipleLines_Yes': 1 if multi_lines == "Yes" else 0,
-    }
-
-    # Convert to DataFrame
-    input_df = pd.DataFrame([raw_data])
-
-    # --- CRITICAL FIX: FEATURE ALIGNMENT ---
-    # 1. Get the exact feature names the scaler was trained on
-    expected_features = scaler.feature_names_in_ #
-
-    # 2. Add any missing features from the original model with value 0
-    for col in expected_features:
-        if col not in input_df.columns:
-            input_df[col] = 0 #
-
-    # 3. Reorder columns to match the training data exactly
-    input_df = input_df[expected_features] #
-
-    # 5. Prediction Logic
-    if st.button("Calculate Churn Risk"):
-        # Scale only once features are perfectly aligned
-        scaled_input = scaler.transform(input_df) #
+    # 4. Form Layout: Organized in vertical sections
+    with st.container():
+        st.subheader("📋 Customer Profile")
+        col1, col2, col3 = st.columns(3)
         
-        # Make prediction
-        prob = model.predict_proba(scaled_input)[0][1]
-        
+        with col1:
+            tenure = st.number_input("Tenure (Months)", min_value=0, max_value=72, value=12)
+            senior_citizen = st.selectbox("Senior Citizen?", ["No", "Yes"])
+        with col2:
+            monthly_charges = st.number_input("Monthly Charges ($)", min_value=0.0, value=70.0)
+            contract = st.selectbox("Contract Type", ["Month-to-month", "One year", "Two year"])
+        with col3:
+            avg_charges = st.number_input("Avg Lifetime Charges ($)", min_value=0.0, value=60.0)
+            internet = st.selectbox("Internet Service", ["Fiber optic", "DSL", "No"])
+
         st.divider()
-        st.subheader(f"Churn Probability: {prob:.2%}")
+        st.subheader("🛠️ Services & Billing")
+        col4, col5, col6 = st.columns(3)
+        
+        with col4:
+            multi_lines = st.selectbox("Multiple Lines?", ["No", "Yes", "No phone service"])
+            paperless = st.selectbox("Paperless Billing?", ["Yes", "No"])
+        with col5:
+            streaming_tv = st.selectbox("Streaming TV?", ["No", "Yes", "No internet service"])
+            payment = st.selectbox("Payment Method", ["Electronic check", "Mailed check", "Bank transfer (automatic)", "Credit card (automatic)"])
+        with col6:
+            streaming_movies = st.selectbox("Streaming Movies?", ["No", "Yes", "No internet service"])
+
+    # 5. Prediction Engine
+    if st.button("🚀 Analyze Churn Risk"):
+        # Data Preparation & Feature Alignment
+        raw_data = {
+            'SeniorCitizen': 1 if senior_citizen == "Yes" else 0,
+            'tenure': tenure,
+            'MonthlyCharges': monthly_charges,
+            'AvgCharges': avg_charges,
+            'InternetService_Fiber optic': 1 if internet == "Fiber optic" else 0,
+            'InternetService_No': 1 if internet == "No" else 0,
+            'Contract_One year': 1 if contract == "One year" else 0,
+            'Contract_Two year': 1 if contract == "Two year" else 0,
+            'PaperlessBilling_Yes': 1 if paperless == "Yes" else 0,
+            'PaymentMethod_Credit card (automatic)': 1 if payment == "Credit card (automatic)" else 0,
+            'PaymentMethod_Electronic check': 1 if payment == "Electronic check" else 0,
+            'PaymentMethod_Mailed check': 1 if payment == "Mailed check" else 0,
+            'StreamingTV_No internet service': 1 if streaming_tv == "No internet service" else 0,
+            'StreamingTV_Yes': 1 if streaming_tv == "Yes" else 0,
+            'StreamingMovies_No internet service': 1 if streaming_movies == "No internet service" else 0,
+            'StreamingMovies_Yes': 1 if streaming_movies == "Yes" else 0,
+            'MultipleLines_No phone service': 1 if multi_lines == "No phone service" else 0,
+            'MultipleLines_Yes': 1 if multi_lines == "Yes" else 0,
+        }
+
+        input_df = pd.DataFrame([raw_data])
+        expected_features = scaler.feature_names_in_
+        for col in expected_features:
+            if col not in input_df.columns:
+                input_df[col] = 0
+        input_df = input_df[expected_features]
+
+        # Get results
+        scaled_input = scaler.transform(input_df)
+        prob = model.predict_proba(scaled_input)[0][1]
+
+        # 6. Visualized Results
+        st.write("### Analysis Result")
+        
+        # Risk Meter
+        st.progress(prob)
         
         if prob > 0.6:
-            st.error("🚨 **High Risk:** This customer is very likely to leave.")
+            st.error(f"### 🚨 High Risk Detected: {prob:.1%}")
+            st.write("**Recommended Action:** Immediate retention discount or concierge outreach.")
         elif prob > 0.3:
-            st.warning("⚠️ **Medium Risk:** Consider a proactive retention offer.")
+            st.warning(f"### ⚠️ Medium Risk: {prob:.1%}")
+            st.write("**Recommended Action:** Upsell to a long-term contract.")
         else:
-            st.success("✅ **Low Risk:** This customer appears loyal.")
+            st.success(f"### ✅ Low Risk: {prob:.1%}")
+            st.write("**Recommended Action:** Maintain standard engagement.")
