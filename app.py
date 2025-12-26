@@ -27,7 +27,7 @@ st.markdown("""
         margin-top: 20px;
     }
     </style>
-    """, unsafe_allow_stdio=True)
+    """, unsafe_allow_html=True)
 
 # 2. Asset Loading
 base_path = os.path.dirname(__file__)
