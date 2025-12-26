@@ -1,7 +1,11 @@
 
-# 🚀 Customer Churn Prediction
+# 🚀 Customer Churn Prediction-ChurnShield AI
 
 ### End-to-End Machine Learning Project (Production-Style)
+
+---
+## 🚀 Live Demo
+Check out the live interactive app here: [ChurnShield AI Dashboard](https://customerchurnshield.streamlit.app/)
 
 ---
 
