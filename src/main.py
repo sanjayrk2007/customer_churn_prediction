@@ -15,7 +15,8 @@ from src.schemas import (
     CustomerResponse,
     PredictionAuditResponse,
     CustomerListItem,
-    DashboardSummary
+    DashboardSummary,
+    CustomerCreate
 )
 from src.services.early_warning import detect_early_warnings
 from src.services.ai_engine import generate_ai_narrative
@@ -276,3 +277,127 @@ def analyze_customer_churn(id: str, db: Session = Depends(get_db)):
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Inference pipeline failure: {e}")
+
+@app.post("/api/customers", response_model=PredictionAuditResponse)
+def create_customer(payload: CustomerCreate, db: Session = Depends(get_db)):
+    global model, scaler
+    if model is None or scaler is None:
+        raise HTTPException(status_code=500, detail="Prediction models are not loaded on server.")
+
+    # Check if ID already exists
+    existing = db.query(Customer).filter(Customer.id == payload.id.upper()).first()
+    if existing:
+        raise HTTPException(status_code=400, detail=f"Customer ID {payload.id} already exists.")
+
+    try:
+        # Create Customer
+        new_customer = Customer(
+            id=payload.id.upper(),
+            gender=payload.gender,
+            senior_citizen=payload.senior_citizen,
+            partner=payload.partner,
+            dependents=payload.dependents,
+            tenure=payload.tenure,
+            phone_service=payload.phone_service,
+            multiple_lines=payload.multiple_lines,
+            internet_service=payload.internet_service,
+            online_security=payload.online_security,
+            online_backup=payload.online_backup,
+            device_protection=payload.device_protection,
+            tech_support=payload.tech_support,
+            streaming_tv=payload.streaming_tv,
+            streaming_movies=payload.streaming_movies,
+            contract=payload.contract,
+            paperless_billing=payload.paperless_billing,
+            payment_method=payload.payment_method,
+            monthly_charges=payload.monthly_charges,
+            avg_charges=payload.avg_charges,
+            actual_churn=0
+        )
+        db.add(new_customer)
+        db.commit()
+
+        # Seed 6 months of baseline activity logs for this new customer
+        logs = []
+        for month in range(1, 7):
+            log = ActivityLog(
+                customer_id=new_customer.id,
+                month_offset=month,
+                login_count=20,  # stable baseline
+                activity_score=80.0  # stable baseline
+            )
+            logs.append(log)
+        db.bulk_save_objects(logs)
+        db.commit()
+
+        # Reload customer to ensure relationships are loaded
+        db.refresh(new_customer)
+
+        # Run Prediction Pipeline
+        raw_data = {
+            'SeniorCitizen': new_customer.senior_citizen,
+            'tenure': new_customer.tenure,
+            'MonthlyCharges': new_customer.monthly_charges,
+            'AvgCharges': new_customer.avg_charges,
+            'InternetService_Fiber optic': 1 if new_customer.internet_service == "Fiber optic" else 0,
+            'InternetService_No': 1 if new_customer.internet_service == "No" else 0,
+            'Contract_One year': 1 if new_customer.contract == "One year" else 0,
+            'Contract_Two year': 1 if new_customer.contract == "Two year" else 0,
+            'PaperlessBilling_Yes': 1 if new_customer.paperless_billing == "Yes" else 0,
+            'PaymentMethod_Credit card (automatic)': 1 if new_customer.payment_method == "Credit card (automatic)" else 0,
+            'PaymentMethod_Electronic check': 1 if new_customer.payment_method == "Electronic check" else 0,
+            'PaymentMethod_Mailed check': 1 if new_customer.payment_method == "Mailed check" else 0,
+            'StreamingTV_No internet service': 1 if new_customer.streaming_tv == "No internet service" else 0,
+            'StreamingTV_Yes': 1 if new_customer.streaming_tv == "Yes" else 0,
+            'StreamingMovies_No internet service': 1 if new_customer.streaming_movies == "No internet service" else 0,
+            'StreamingMovies_Yes': 1 if new_customer.streaming_movies == "Yes" else 0,
+            'MultipleLines_No phone service': 1 if new_customer.multiple_lines == "No phone service" else 0,
+            'MultipleLines_Yes': 1 if new_customer.multiple_lines == "Yes" else 0,
+        }
+
+        # Align columns
+        input_df = pd.DataFrame([raw_data])
+        expected_features = scaler.feature_names_in_
+        for col in expected_features:
+            if col not in input_df.columns:
+                input_df[col] = 0
+        input_df = input_df[expected_features]
+
+        # Compute probability
+        scaled_input = scaler.transform(input_df)
+        prob = float(model.predict_proba(scaled_input)[0][1])
+        risk_level = "High" if prob > 0.6 else "Medium" if prob > 0.3 else "Low"
+
+        # Detect Warnings
+        warnings = detect_early_warnings(new_customer)
+
+        # AI explanations
+        ai_data = generate_ai_narrative(new_customer, warnings, prob)
+
+        # Audit
+        audit = PredictionAudit(
+            customer_id=new_customer.id,
+            churn_probability=prob,
+            risk_level=risk_level,
+            early_warnings=json.dumps(warnings),
+            ai_explanation=ai_data["explanation"],
+            ai_recommendations=json.dumps(ai_data["recommendations"])
+        )
+        db.add(audit)
+        db.commit()
+        db.refresh(audit)
+
+        return {
+            "id": audit.id,
+            "customer_id": audit.customer_id,
+            "churn_probability": audit.churn_probability,
+            "risk_level": audit.risk_level,
+            "early_warnings": warnings,
+            "ai_explanation": audit.ai_explanation,
+            "ai_recommendations": ai_data["recommendations"],
+            "created_at": audit.created_at
+        }
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to create customer: {e}")
+
