@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.venv/
+venv/
+env/
+.env
+
+# Database
+data.db
+
+# Node.js
+node_modules/
+dist/
+.eslintcache
+
+# OS
+.DS_Store
+Thumbs.db
