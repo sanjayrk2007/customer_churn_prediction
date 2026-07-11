@@ -9,7 +9,8 @@ from src.database.models import Customer, ActivityLog, SupportTicket
 random.seed(42)
 np.random.seed(42)
 
-CSV_PATH = '/Users/rksanjayaanand/Projects/customer_churn_prediction/customer_churn_prediction/WA_Fn-UseC_-Telco-Customer-Churn.csv'
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+CSV_PATH = os.path.join(BASE_DIR, 'WA_Fn-UseC_-Telco-Customer-Churn.csv')
 
 def seed():
     print("Initializing Database...")
