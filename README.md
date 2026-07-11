@@ -7,6 +7,44 @@ Predicting customer churn isn't just about achieving high accuracy scores — it
 
 ---
 
+## 🚀 Live Demo
+
+👉 **Interactive Dashboard:** [https://customer-churn-prediction-cyan-delta.vercel.app/](https://customer-churn-prediction-cyan-delta.vercel.app/)
+
+---
+
+## 🔄 System Architecture & Data Flow
+
+```mermaid
+graph TD
+    %% Styling Classes
+    classDef client fill:#3b82f6,stroke:#1d4ed8,stroke-width:2px,color:#fff;
+    classDef server fill:#818cf8,stroke:#4f46e5,stroke-width:2px,color:#fff;
+    classDef db fill:#0f172a,stroke:#334155,stroke-width:2px,color:#94a3b8;
+    classDef engine fill:#10b981,stroke:#047857,stroke-width:2px,color:#fff;
+    classDef alert fill:#f59e0b,stroke:#b45309,stroke-width:2px,color:#fff;
+    classDef ai fill:#a78bfa,stroke:#6d28d9,stroke-width:2px,color:#fff;
+
+    %% Nodes
+    A[Vite React Frontend<br/>Hosted on Vercel]:::client
+    B[FastAPI Backend Engine<br/>Hosted REST API]:::server
+    C[(SQLite Database<br/>data.db)]:::db
+    D[1. ML Inference Engine<br/>StandardScaler + Logistic Regression]:::engine
+    E[2. Early Warning Detector<br/>Rule-based Activity Scan]:::alert
+    F[3. AI Explanation Engine<br/>Gemini API + Fallback Templates]:::ai
+
+    %% Flow connections
+    A -->|1. Request Audit / Add Profile| B
+    B <-->|2. Load/Save Logs & Records| C
+    B -->|3. Scale Features & Predict Churn| D
+    B -->|4. Scan 6-Month Usage Drops| E
+    B -->|5. Synthesize Explanations & Actions| F
+    D & E & F -->|6. Compile Prediction Audit Log| B
+    B -->|7. Return Structured JSON Payload| A
+```
+
+---
+
 ## ✨ Key Features
 
 ### 📡 Decoupled Full-Stack Architecture
