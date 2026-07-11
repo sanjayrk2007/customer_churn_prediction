@@ -85,3 +85,26 @@ class DashboardSummary(BaseModel):
     revenue_at_risk: float
     avg_churn_probability: float
     unresolved_tickets: int
+
+class CustomerCreate(BaseModel):
+    id: str
+    gender: str
+    senior_citizen: int
+    partner: str
+    dependents: str
+    tenure: int
+    phone_service: str
+    multiple_lines: str
+    internet_service: str
+    online_security: str
+    online_backup: str
+    device_protection: str
+    tech_support: str
+    streaming_tv: str
+    streaming_movies: str
+    contract: str
+    paperless_billing: str
+    payment_method: str
+    monthly_charges: float
+    avg_charges: float
+

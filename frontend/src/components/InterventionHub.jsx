@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { fetchCustomers, fetchCustomerDetail, analyzeCustomer, fetchCustomerLatestPrediction } from '../api';
-import { Search, Loader2, Sparkles, AlertTriangle, ShieldCheck, Mail, PhoneCall, RefreshCw, FileText } from 'lucide-react';
+import { fetchCustomers, fetchCustomerDetail, analyzeCustomer, fetchCustomerLatestPrediction, createCustomer } from '../api';
+import { Search, Loader2, Sparkles, AlertTriangle, ShieldCheck, Mail, PhoneCall, RefreshCw, FileText, UserPlus, X } from 'lucide-react';
 
 export default function InterventionHub() {
   const [customers, setCustomers] = useState([]);
@@ -14,6 +14,33 @@ export default function InterventionHub() {
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   
+  // Creation Form State
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState('');
+  const [formData, setFormData] = useState({
+    id: '',
+    gender: 'Female',
+    senior_citizen: 0,
+    partner: 'No',
+    dependents: 'No',
+    tenure: 12,
+    phone_service: 'Yes',
+    multiple_lines: 'No',
+    internet_service: 'Fiber optic',
+    online_security: 'No',
+    online_backup: 'No',
+    device_protection: 'No',
+    tech_support: 'No',
+    streaming_tv: 'No',
+    streaming_movies: 'No',
+    contract: 'Month-to-month',
+    paperless_billing: 'Yes',
+    payment_method: 'Electronic check',
+    monthly_charges: 85.0,
+    avg_charges: 85.0
+  });
+
   // Track checked checklist items locally
   const [checklist, setChecklist] = useState({});
 
@@ -45,6 +72,7 @@ export default function InterventionHub() {
 
   const selectCustomer = (id) => {
     setSelectedId(id);
+    setShowCreateForm(false); // Hide creation form when selecting existing
     setLoadingDetail(true);
     setPrediction(null);
     setChecklist({}); // reset checklist
@@ -85,6 +113,121 @@ export default function InterventionHub() {
       });
   };
 
+  const triggerCreateForm = () => {
+    setCreateError('');
+    setShowCreateForm(true);
+    setSelectedId('');
+    
+    // Auto-generate a dummy ID (e.g. CUST-5839)
+    const randId = 'CUST-' + Math.floor(1000 + Math.random() * 9000);
+    setFormData({
+      id: randId,
+      gender: 'Female',
+      senior_citizen: 0,
+      partner: 'No',
+      dependents: 'No',
+      tenure: 12,
+      phone_service: 'Yes',
+      multiple_lines: 'No',
+      internet_service: 'Fiber optic',
+      online_security: 'No',
+      online_backup: 'No',
+      device_protection: 'No',
+      tech_support: 'No',
+      streaming_tv: 'No',
+      streaming_movies: 'No',
+      contract: 'Month-to-month',
+      paperless_billing: 'Yes',
+      payment_method: 'Electronic check',
+      monthly_charges: 85.0,
+      avg_charges: 85.0
+    });
+  };
+
+  const handleFormChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: name === 'tenure' || name === 'senior_citizen' ? parseInt(value) :
+              name === 'monthly_charges' || name === 'avg_charges' ? parseFloat(value) : value
+    }));
+  };
+
+  const handleCreateCustomerSubmit = (e) => {
+    e.preventDefault();
+    setCreating(true);
+    setCreateError('');
+
+    // Ensure AvgCharges logic: if tenure is 0, TotalCharges is typically 0, so AvgCharges is 0.
+    // Otherwise, we enforce reasonable charges
+    if (formData.id.trim() === '') {
+      setCreateError('Customer ID is required');
+      setCreating(false);
+      return;
+    }
+
+    createCustomer(formData)
+      .then(predData => {
+        setCreating(false);
+        setShowCreateForm(false);
+
+        // 1. Add customer row to list
+        const newListItem = {
+          id: formData.id.toUpperCase(),
+          contract: formData.contract,
+          payment_method: formData.payment_method,
+          monthly_charges: Number(formData.monthly_charges),
+          tenure: Number(formData.tenure),
+          churn_probability: predData.churn_probability,
+          risk_level: predData.risk_level,
+          warning_count: predData.early_warnings.length
+        };
+        setCustomers(prev => [newListItem, ...prev]);
+
+        // 2. Select the customer
+        setSelectedId(formData.id.toUpperCase());
+
+        // 3. Set details locally
+        setDetail({
+          id: formData.id.toUpperCase(),
+          gender: formData.gender,
+          senior_citizen: formData.senior_citizen,
+          partner: formData.partner,
+          dependents: formData.dependents,
+          tenure: Number(formData.tenure),
+          phone_service: formData.phone_service,
+          multiple_lines: formData.multiple_lines,
+          internet_service: formData.internet_service,
+          online_security: formData.online_security,
+          online_backup: formData.online_backup,
+          device_protection: formData.device_protection,
+          tech_support: formData.tech_support,
+          streaming_tv: formData.streaming_tv,
+          streaming_movies: formData.streaming_movies,
+          contract: formData.contract,
+          paperless_billing: formData.paperless_billing,
+          payment_method: formData.payment_method,
+          monthly_charges: Number(formData.monthly_charges),
+          avg_charges: Number(formData.avg_charges),
+          actual_churn: 0,
+          activity_logs: Array.from({ length: 6 }, (_, i) => ({
+            id: i,
+            customer_id: formData.id.toUpperCase(),
+            month_offset: i + 1,
+            login_count: 20,
+            activity_score: 80.0
+          })),
+          support_tickets: []
+        });
+        setPrediction(predData);
+      })
+      .catch(err => {
+        console.error(err);
+        setCreateError(err.message);
+        setCreating(false);
+      });
+  };
+
   const toggleChecklist = (idx) => {
     setChecklist(prev => ({
       ...prev,
@@ -96,7 +239,6 @@ export default function InterventionHub() {
   const renderActivityChart = (logs) => {
     if (!logs || logs.length === 0) return null;
     
-    // Sort logs chronologically (offset 1 to 6)
     const sorted = [...logs].sort((a, b) => a.month_offset - b.month_offset);
     
     const width = 500;
@@ -109,7 +251,6 @@ export default function InterventionHub() {
     
     const points = sorted.map((l, i) => {
       const x = padding + i * step;
-      // Map activity score (0-100) to Y space (0 = bottom, 100 = top)
       const y = padding + chartHeight - (l.activity_score / 100) * chartHeight;
       return { x, y, ...l };
     });
@@ -126,7 +267,6 @@ export default function InterventionHub() {
           </linearGradient>
         </defs>
         
-        {/* Grid Lines */}
         {[0, 25, 50, 75, 100].map((v, i) => {
           const y = padding + chartHeight - (v / 100) * chartHeight;
           return (
@@ -137,11 +277,9 @@ export default function InterventionHub() {
           );
         })}
         
-        {/* Area and Line */}
         <path d={areaPath} fill="url(#chartGradient)" />
         <path d={linePath} fill="none" stroke="#6366f1" strokeWidth="2.5" />
         
-        {/* Points & Labels */}
         {points.map((p, i) => (
           <g key={i}>
             <circle cx={p.x} cy={p.y} r="4" fill="#818cf8" stroke="#0f172a" strokeWidth="1.5" />
@@ -163,7 +301,17 @@ export default function InterventionHub() {
       {/* LEFT COLUMN: Customer Risk Queue */}
       <div className="queue-panel">
         <div style={{ marginBottom: '16px' }}>
-          <h2 style={{ fontSize: '1.25rem', fontWeight: 600, color: '#fff', margin: '0 0 16px' }}>Intervention Queue</h2>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 600, color: '#fff', margin: 0 }}>Intervention Queue</h2>
+            <button 
+              onClick={triggerCreateForm} 
+              className="btn-primary" 
+              style={{ padding: '6px 12px', fontSize: '0.8rem', gap: '4px', boxShadow: 'none' }}
+            >
+              <UserPlus style={{ width: '14px', height: '14px' }} />
+              Add Customer
+            </button>
+          </div>
           
           <input 
             type="text" 
@@ -236,21 +384,242 @@ export default function InterventionHub() {
         </div>
       </div>
 
-      {/* RIGHT COLUMN: Selected Customer Detail Panel */}
+      {/* RIGHT COLUMN: Selected Customer Detail Panel or Creation Form */}
       <div className="detail-panel">
-        {loadingDetail ? (
+        {showCreateForm ? (
+          /* =================== ADD NEW CUSTOMER FORM =================== */
+          <form onSubmit={handleCreateCustomerSubmit} className="glass-card animate-fade-in" style={{ padding: '28px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '16px' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.25rem', color: '#fff', fontWeight: 700 }}>Add Customer Profile</h3>
+                <p style={{ margin: '4px 0 0', fontSize: '0.8rem', color: '#94a3b8' }}>Provide demographics, subscription details, and costs to run live churn predictions.</p>
+              </div>
+              <button 
+                type="button" 
+                onClick={() => { setShowCreateForm(false); if (customers.length > 0) selectCustomer(customers[0].id); }} 
+                className="nav-btn" 
+                style={{ width: 'auto', padding: '8px', margin: 0 }}
+              >
+                <X style={{ width: '18px', height: '18px' }} />
+              </button>
+            </div>
+
+            {createError && (
+              <div style={{ padding: '12px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: '8px', color: '#f87171', fontSize: '0.85rem' }}>
+                {createError}
+              </div>
+            )}
+
+            {/* Form Fields Grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+              
+              <div>
+                <label style={{ display: 'block', fontSize: '0.75rem', color: '#94a3b8', marginBottom: '6px', fontWeight: 600 }}>Customer ID</label>
+                <input 
+                  type="text" 
+                  name="id" 
+                  value={formData.id} 
+                  onChange={handleFormChange} 
+                  className="search-input" 
+                  style={{ margin: 0, textTransform: 'uppercase' }} 
+                  required
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.75rem', color: '#94a3b8', marginBottom: '6px', fontWeight: 600 }}>Gender</label>
+                <select name="gender" value={formData.gender} onChange={handleFormChange} className="search-input" style={{ margin: 0 }}>
+                  <option value="Female">Female</option>
+                  <option value="Male">Male</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.75rem', color: '#94a3b8', marginBottom: '6px', fontWeight: 600 }}>Senior Citizen?</label>
+                <select name="senior_citizen" value={formData.senior_citizen} onChange={handleFormChange} className="search-input" style={{ margin: 0 }}>
+                  <option value={0}>No</option>
+                  <option value={1}>Yes</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.75rem', color: '#94a3b8', marginBottom: '6px', fontWeight: 600 }}>Partner Status</label>
+                <select name="partner" value={formData.partner} onChange={handleFormChange} className="search-input" style={{ margin: 0 }}>
+                  <option value="No">No Partner</option>
+                  <option value="Yes">Has Partner</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.75rem', color: '#94a3b8', marginBottom: '6px', fontWeight: 600 }}>Dependents Status</label>
+                <select name="dependents" value={formData.dependents} onChange={handleFormChange} className="search-input" style={{ margin: 0 }}>
+                  <option value="No">No Dependents</option>
+                  <option value="Yes">Has Dependents</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.75rem', color: '#94a3b8', marginBottom: '6px', fontWeight: 600 }}>Tenure (Months)</label>
+                <input 
+                  type="number" 
+                  name="tenure" 
+                  min="0" 
+                  max="120"
+                  value={formData.tenure} 
+                  onChange={handleFormChange} 
+                  className="search-input" 
+                  style={{ margin: 0 }} 
+                  required
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.75rem', color: '#94a3b8', marginBottom: '6px', fontWeight: 600 }}>Contract Type</label>
+                <select name="contract" value={formData.contract} onChange={handleFormChange} className="search-input" style={{ margin: 0 }}>
+                  <option value="Month-to-month">Month-to-month</option>
+                  <option value="One year">One year</option>
+                  <option value="Two year">Two year</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.75rem', color: '#94a3b8', marginBottom: '6px', fontWeight: 600 }}>Internet Service</label>
+                <select name="internet_service" value={formData.internet_service} onChange={handleFormChange} className="search-input" style={{ margin: 0 }}>
+                  <option value="Fiber optic">Fiber optic</option>
+                  <option value="DSL">DSL</option>
+                  <option value="No">No Internet Service</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.75rem', color: '#94a3b8', marginBottom: '6px', fontWeight: 600 }}>Payment Method</label>
+                <select name="payment_method" value={formData.payment_method} onChange={handleFormChange} className="search-input" style={{ margin: 0 }}>
+                  <option value="Electronic check">Electronic check</option>
+                  <option value="Mailed check">Mailed check</option>
+                  <option value="Bank transfer (automatic)">Bank transfer (automatic)</option>
+                  <option value="Credit card (automatic)">Credit card (automatic)</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.75rem', color: '#94a3b8', marginBottom: '6px', fontWeight: 600 }}>Monthly Charges ($)</label>
+                <input 
+                  type="number" 
+                  name="monthly_charges" 
+                  step="0.01"
+                  min="0"
+                  value={formData.monthly_charges} 
+                  onChange={handleFormChange} 
+                  className="search-input" 
+                  style={{ margin: 0 }} 
+                  required
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.75rem', color: '#94a3b8', marginBottom: '6px', fontWeight: 600 }}>Avg Lifetime Charges ($)</label>
+                <input 
+                  type="number" 
+                  name="avg_charges" 
+                  step="0.01"
+                  min="0"
+                  value={formData.avg_charges} 
+                  onChange={handleFormChange} 
+                  className="search-input" 
+                  style={{ margin: 0 }} 
+                  required
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.75rem', color: '#94a3b8', marginBottom: '6px', fontWeight: 600 }}>Paperless Billing</label>
+                <select name="paperless_billing" value={formData.paperless_billing} onChange={handleFormChange} className="search-input" style={{ margin: 0 }}>
+                  <option value="Yes">Yes</option>
+                  <option value="No">No</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.75rem', color: '#94a3b8', marginBottom: '6px', fontWeight: 600 }}>Phone Service</label>
+                <select name="phone_service" value={formData.phone_service} onChange={handleFormChange} className="search-input" style={{ margin: 0 }}>
+                  <option value="Yes">Yes</option>
+                  <option value="No">No</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.75rem', color: '#94a3b8', marginBottom: '6px', fontWeight: 600 }}>Multiple Lines</label>
+                <select name="multiple_lines" value={formData.multiple_lines} onChange={handleFormChange} className="search-input" style={{ margin: 0 }}>
+                  <option value="No">No</option>
+                  <option value="Yes">Yes</option>
+                  <option value="No phone service">No phone service</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.75rem', color: '#94a3b8', marginBottom: '6px', fontWeight: 600 }}>Tech Support</label>
+                <select name="tech_support" value={formData.tech_support} onChange={handleFormChange} className="search-input" style={{ margin: 0 }}>
+                  <option value="No">No</option>
+                  <option value="Yes">Yes</option>
+                  <option value="No internet service">No internet service</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.75rem', color: '#94a3b8', marginBottom: '6px', fontWeight: 600 }}>Online Security</label>
+                <select name="online_security" value={formData.online_security} onChange={handleFormChange} className="search-input" style={{ margin: 0 }}>
+                  <option value="No">No</option>
+                  <option value="Yes">Yes</option>
+                  <option value="No internet service">No internet service</option>
+                </select>
+              </div>
+
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '16px' }}>
+              <button 
+                type="button" 
+                onClick={() => { setShowCreateForm(false); if (customers.length > 0) selectCustomer(customers[0].id); }}
+                className="nav-btn" 
+                style={{ width: 'auto', margin: 0, padding: '10px 20px' }}
+              >
+                Cancel
+              </button>
+              <button 
+                type="submit" 
+                disabled={creating}
+                className="btn-primary"
+              >
+                {creating ? (
+                  <>
+                    <Loader2 className="animate-spin" style={{ width: '16px', height: '16px' }} />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles style={{ width: '16px', height: '16px' }} />
+                    Create & Analyze Risk
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+        ) : loadingDetail ? (
+          /* =================== LOADING STATE =================== */
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
             <Loader2 className="animate-spin" style={{ color: '#6366f1', width: '32px', height: '32px' }} />
           </div>
         ) : !detail ? (
+          /* =================== EMPTY STATE =================== */
           <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '100%', color: '#64748b' }}>
             <Sparkles style={{ width: '48px', height: '48px', marginBottom: '16px' }} />
             <p>Select a customer from the queue to run retention analyses.</p>
           </div>
         ) : (
+          /* =================== CUSTOMER DETAIL VIEW =================== */
           <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
             
-            {/* Header Header */}
+            {/* Header */}
             <div className="glass-card" style={{ padding: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '4px' }}>

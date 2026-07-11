@@ -38,3 +38,17 @@ export async function fetchCustomerLatestPrediction(id) {
   }
   return res.json();
 }
+
+export async function createCustomer(data) {
+  const res = await fetch(`${API_BASE_URL}/api/customers`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/api+json; charset=utf-8' ? 'application/json' : 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.detail || 'Failed to create customer profile');
+  }
+  return res.json();
+}
+
