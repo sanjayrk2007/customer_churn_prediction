@@ -90,7 +90,7 @@ export default function Dashboard() {
               <div style={{ padding: '8px', background: 'rgba(16, 185, 129, 0.1)', borderRadius: '8px', color: '#34d399' }}>03</div>
               <div>
                 <h4 style={{ margin: '0 0 4px', fontSize: '0.95rem', fontWeight: 600, color: '#fff' }}>Usage Drift Monitoring</h4>
-                <p style={{ margin: '0', fontSize: '0.85rem', color: '#94a3b8' }}>Track accounts with $>30\%$ usage declines. Trigger proactive re-engagement flows before statistical churn models react.</p>
+                <p style={{ margin: '0', fontSize: '0.85rem', color: '#94a3b8' }}>Track accounts with over 30% usage declines. Trigger proactive re-engagement flows before statistical churn models react.</p>
               </div>
             </div>
           </div>
