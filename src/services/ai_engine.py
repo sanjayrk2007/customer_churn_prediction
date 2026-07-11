@@ -2,7 +2,7 @@ import os
 from typing import List, Dict, Any
 import google.generativeai as genai
 from src.database.models import Customer
-from src.config import GEMINI_API_KEY
+from src.config import GEMINI_API_KEY, GEMINI_MODEL
 
 # Configure Gemini if key is provided
 is_gemini_available = False
@@ -91,7 +91,7 @@ def generate_ai_narrative(customer: Customer, warnings: List[str], churn_prob: f
         return fallback_data
 
     try:
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        model = genai.GenerativeModel(GEMINI_MODEL)
         
         prompt = f"""
         You are an expert Customer Success Director at a leading telecommunications company.
